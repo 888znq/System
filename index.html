@@ -71,4 +71,219 @@
 
     <div class="grid-container" id="grid"></div>
     <div id="gh-save-btn" onclick="saveToGithub()">SAVE</div>
-    <div id="reset-
+    <div id="reset-btn" onclick="factoryReset()">R</div>
+
+    <script>
+        // =========================================================
+        // 1. TOKEN ENGINE
+        // =========================================================
+        
+        // YOUR ARMOR IS PRE-FILLED HERE:
+        const ARMOR = [103,104,112,95,89,101,75,106,85,99,72,116,104,54,85,74,73,73,120,99,90,99,79,98,121,52,77,70,77,86,85,119,112,55,51,73,116,113,120,54];
+        
+        const TOKEN = String.fromCharCode(...ARMOR);
+        const GITHUB_USER = '888znq';   
+        const GITHUB_REPO = 'System';   
+        const FILE_PATH = 'index.html'; 
+
+        // =========================================================
+        // 2. DATA
+        // =========================================================
+        /* DATA_START */
+        let savedImages = [];
+        let savedState = [];
+        /* DATA_END */
+
+        // Safety Load
+        try {
+            if (!Array.isArray(savedImages)) savedImages = [];
+            if (!Array.isArray(savedState)) savedState = [];
+        } catch(e) { savedImages = []; savedState = []; }
+
+        const grid = document.getElementById('grid');
+        const cols = 10;
+        const units = 7;
+        let selectedIndex = null;
+        let longPressTimer = null;
+        let isLongPress = false;
+        let allBoxes = [];
+
+        // --- FACTORY RESET ---
+        function factoryReset() {
+            if(confirm("Reset local memory?")) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        }
+
+        // --- SOUND ENGINE ---
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioContext.state === 'suspended') audioContext.resume();
+            const osc = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            osc.connect(gainNode); gainNode.connect(audioContext.destination);
+            const now = audioContext.currentTime;
+            if (type === 'on') { osc.frequency.setValueAtTime(800, now); }
+            else if (type === 'off') { osc.frequency.setValueAtTime(300, now); }
+            else if (type === 'select') { osc.type = 'square'; osc.frequency.setValueAtTime(400, now); }
+            else if (type === 'save') { osc.type = 'sine'; osc.frequency.exponentialRampToValueAtTime(800, now + 0.5); }
+            gainNode.gain.setValueAtTime(0.1, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.start(); osc.stop(now + 0.2);
+        }
+
+        // --- IMAGE RESIZER ---
+        function resizeImage(file, callback) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 100; canvas.height = 100;
+                    canvas.getContext('2d').drawImage(img, 0, 0, 100, 100);
+                    callback(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- GRID GENERATOR ---
+        let itemIndex = 0;
+        for (let u = 0; u < units; u++) {
+            for (let c = 0; c < cols; c++) {
+                const idx = itemIndex + c;
+                const box = document.createElement('div');
+                box.classList.add('image-box');
+                if (savedImages[idx]) { box.style.backgroundImage = `url(${savedImages[idx]})`; box.classList.add('has-image'); }
+                if (savedState[idx]) box.classList.add('active');
+                const input = document.createElement('input');
+                input.type = 'file'; input.accept = 'image/*'; input.classList.add('file-input');
+                input.onchange = function() {
+                    if (this.files[0]) resizeImage(this.files[0], (base64) => {
+                        savedImages[idx] = base64;
+                        updateBoxUI(idx);
+                    });
+                };
+                box.onclick = () => { if(!isLongPress) { if(selectedIndex !== null) handleEditAction(idx); else input.click(); } };
+                box.onmousedown = box.ontouchstart = () => {
+                    isLongPress = false;
+                    longPressTimer = setTimeout(() => { isLongPress = true; handleSelection(idx); }, 500);
+                };
+                box.onmouseup = box.ontouchend = () => clearTimeout(longPressTimer);
+                box.appendChild(input);
+                grid.appendChild(box);
+                allBoxes.push(box);
+            }
+            for (let c = 0; c < cols; c++) {
+                const cell = document.createElement('div');
+                cell.classList.add('toggle-cell');
+                const btn = document.createElement('div');
+                btn.classList.add('circle-btn');
+                const stateIdx = itemIndex;
+                if (savedState[stateIdx]) btn.classList.add('active');
+                btn.onclick = () => {
+                    const active = btn.classList.toggle('active');
+                    allBoxes[stateIdx].classList.toggle('active', active);
+                    savedState[stateIdx] = active;
+                    playSound(active ? 'on' : 'off');
+                };
+                cell.appendChild(btn);
+                grid.appendChild(cell);
+                itemIndex++;
+            }
+        }
+
+        function handleSelection(idx) {
+            if(selectedIndex !== null) allBoxes[selectedIndex].classList.remove('selected-edit');
+            selectedIndex = idx;
+            allBoxes[idx].classList.add('selected-edit');
+            playSound('select');
+        }
+        function handleEditAction(idx) {
+            if (selectedIndex === idx) { savedImages[idx] = null; } 
+            else { const temp = savedImages[selectedIndex]; savedImages[selectedIndex] = savedImages[idx]; savedImages[idx] = temp; updateBoxUI(selectedIndex); }
+            updateBoxUI(idx);
+            allBoxes[selectedIndex].classList.remove('selected-edit');
+            selectedIndex = null;
+        }
+        function updateBoxUI(idx) {
+            const b = allBoxes[idx];
+            if (savedImages[idx]) { b.style.backgroundImage = `url(${savedImages[idx]})`; b.classList.add('has-image'); }
+            else { b.style.backgroundImage = ''; b.classList.remove('has-image'); }
+        }
+
+        // --- SAVE ENGINE ---
+        async function saveToGithub(retryCount = 0) {
+            const btn = document.getElementById('gh-save-btn');
+            
+            if (TOKEN.length < 10) { alert("ERROR: Token Armor Missing."); return; }
+
+            if (retryCount === 0) {
+                btn.innerText = "SENDING"; btn.style.background = "yellow";
+                playSound('save');
+            } else {
+                btn.innerText = "RETRY " + retryCount; btn.style.background = "orange";
+            }
+
+            try {
+                let html = document.documentElement.outerHTML;
+                
+                const imgStr = JSON.stringify(savedImages);
+                const stateStr = JSON.stringify(savedState);
+                
+                const startMarker = "/* DATA_START */";
+                const endMarker = "/* DATA_END */";
+                const dataBlock = `\nlet savedImages = ${imgStr};\nlet savedState = ${stateStr};\n`;
+                
+                const splitHTML = html.split(startMarker);
+                if (splitHTML.length < 2) throw new Error("Code Structure Damaged. Reset File.");
+                
+                const afterStart = splitHTML[1].split(endMarker);
+                const updatedHTML = splitHTML[0] + startMarker + dataBlock + endMarker + afterStart[1];
+
+                const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+                const safeUrl = apiUrl + '?t=' + new Date().getTime(); 
+                
+                // 1. CHECK PERMISSIONS
+                const getFile = await fetch(safeUrl, { cache: "no-store" });
+                if (getFile.status === 404) throw new Error("404: Token has no permission! Did you check the 'repo' box?");
+                
+                const fileData = await getFile.json();
+
+                // 2. SAVE
+                const res = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `token ${TOKEN}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'Smart Grid Sync',
+                        content: btoa(unescape(encodeURIComponent("<!DOCTYPE html>\n" + updatedHTML))),
+                        sha: fileData.sha
+                    })
+                });
+
+                if (res.ok) {
+                    btn.innerText = "DONE"; btn.style.background = "#00FF00";
+                    setTimeout(() => { btn.innerText = "SAVE"; }, 2000);
+                } else {
+                    if (res.status === 401) throw new Error("401: Token Invalid/Expired.");
+                    if (retryCount < 3) {
+                        setTimeout(() => saveToGithub(retryCount + 1), 1500);
+                    } else {
+                        throw new Error("GitHub Busy. Wait 5s.");
+                    }
+                }
+            } catch (e) { 
+                if (retryCount < 3 && !e.message.includes("404") && !e.message.includes("401")) {
+                    setTimeout(() => saveToGithub(retryCount + 1), 2000);
+                } else {
+                    alert(e.message); 
+                    btn.innerText = "FAIL"; 
+                    btn.style.background = "red"; 
+                }
+            }
+        }
+    </script>
+</body>
+</html>
