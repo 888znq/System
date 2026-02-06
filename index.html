@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>System 10x7</title>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; background-color: #000; overflow: hidden; user-select: none; }
@@ -35,7 +42,7 @@
         .circle-btn.active { background-color: #00FF00; }
 
         .file-input { display: none; }
-        #status-log { position: fixed; top: 10px; left: 10px; color: #555; font-size: 10px; font-family: monospace; }
+        #status-log { position: fixed; top: 10px; left: 10px; color: #555; font-size: 10px; font-family: monospace; z-index: 999; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -46,7 +53,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // YOUR CONFIG IS EMBEDDED HERE
         const firebaseConfig = {
             apiKey: "AIzaSyAYHA8Qw3Qzbyg8MtjrSKcJusNi4VaA6V4",
             authDomain: "system-data-bf026.firebaseapp.com",
@@ -59,7 +65,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const dbRef = ref(db, 'system_10x7_data'); // Unique Folder for App 3
+        const dbRef = ref(db, 'system_10x7_data'); 
 
         let savedImages = new Array(70).fill(null);
         let savedState = new Array(70).fill(false);
