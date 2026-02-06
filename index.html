@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>System 10x7</title>
-    <script>
-        window.onerror = function(msg, url, line) {
-            alert("SYSTEM ERROR:\n" + msg + "\nLine: " + line);
-        };
-    </script>
     <style>
         /* 1. RESET & LOCK */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -32,7 +27,12 @@
             overflow: hidden; background-size: cover; background-position: center;
             background-repeat: no-repeat; transition: border-color 0.1s;
         }
-        .image-box.has-image { border-color: #444; }
+        .image-box::after {
+            content: "+"; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); color: #444; font-size: 24px;
+            font-family: sans-serif; font-weight: bold; pointer-events: none;
+        }
+        .image-box.has-image::after { display: none; }
         .image-box.active { border-color: #00FF00; }
         .image-box.selected-edit { border-color: #FFFF00 !important; animation: pulse 1s infinite; }
 
@@ -42,11 +42,12 @@
             100% { box-shadow: 0 0 0 0 rgba(255, 255, 0, 0); }
         }
 
-        /* 4. BUTTONS */
+        /* 4. TOGGLE BUTTONS */
         .toggle-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
         .circle-btn { height: 80%; aspect-ratio: 1 / 1; border-radius: 50%; background-color: #FF0000; border: 2px solid #000000; cursor: pointer; }
         .circle-btn.active { background-color: #00FF00; }
 
+        /* 5. SAVE BUTTON STYLE */
         #gh-save-btn {
             position: fixed; bottom: 15px; right: 15px; width: 60px; height: 60px;
             background: #00FF00; color: #000; border-radius: 50%;
@@ -55,14 +56,6 @@
             font-family: sans-serif; box-shadow: 0 0 15px rgba(0,255,0,0.5);
             text-align: center;
         }
-        
-        #reset-btn {
-            position: fixed; bottom: 15px; left: 15px; width: 30px; height: 30px;
-            background: #333; color: #555; border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 9px; cursor: pointer; z-index: 10000; border: 1px solid #444;
-        }
-
         .file-input { display: none; }
     </style>
 </head>
@@ -70,35 +63,26 @@
 
     <div class="grid-container" id="grid"></div>
     <div id="gh-save-btn" onclick="saveToGithub()">SAVE</div>
-    <div id="reset-btn" onclick="factoryReset()">R</div>
-
-    <script id="database" type="application/json">
-        {"images":[], "state":[]}
-    </script>
 
     <script>
-        // --- 1. CONFIGURATION & ARMOR ---
-        window.ARMOR = [103,104,112,95,89,101,75,106,85,99,72,116,104,54,85,74,73,73,120,99,90,99,79,98,121,52,77,70,77,86,85,119,112,55,51,73,116,113,120,54];
+        // =========================================================
+        // 1. CONFIGURATION
+        // =========================================================
         const GITHUB_USER = '888znq';   
         const GITHUB_REPO = 'System';   
         const FILE_PATH = 'index.html'; 
+        const TOKEN = "YOUR_TOKEN_HERE"; 
 
-        // --- 2. LOAD DATA FROM SAFE BOX ---
-        let savedImages = [];
+        // =========================================================
+        // 2. DATA
+        // =========================================================
         let savedState = [];
+        let savedImages = [];
 
         try {
-            // Read from the HTML Database Block
-            const rawData = document.getElementById('database').textContent;
-            const data = JSON.parse(rawData);
-            savedImages = data.images || [];
-            savedState = data.state || [];
-            
-            // If empty, check local storage backup
-            if (savedImages.length === 0 && localStorage.getItem('gridImages_10x7')) {
-                savedImages = JSON.parse(localStorage.getItem('gridImages_10x7'));
-            }
-        } catch(e) { console.log("Database empty or reset"); }
+            if (savedImages.length > 0) localStorage.setItem('gridImages_10x7', JSON.stringify(savedImages));
+            if (savedState.length > 0) localStorage.setItem('gridState_10x7', JSON.stringify(savedState));
+        } catch(e) {}
 
         const grid = document.getElementById('grid');
         const cols = 10;
@@ -107,14 +91,6 @@
         let longPressTimer = null;
         let isLongPress = false;
         let allBoxes = [];
-
-        // --- FACTORY RESET ---
-        function factoryReset() {
-            if(confirm("Reset everything?")) {
-                localStorage.clear();
-                window.location.reload();
-            }
-        }
 
         // --- SOUND ENGINE ---
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -217,25 +193,40 @@
             else { b.style.backgroundImage = ''; b.classList.remove('has-image'); }
         }
 
-        // --- SAVE ENGINE (DATABASE BLOCK METHOD) ---
-        async function saveToGithub(retryCount = 0) {
+        // --- SAVE ENGINE ---
+        async function saveToGithub() {
             const btn = document.getElementById('gh-save-btn');
-            
-            // Reconstruct Token
-            let token = "";
-            try { token = String.fromCharCode(...window.ARMOR); } 
-            catch(e) { alert("Armor Error. Reset Code."); return; }
-
-            if (token.length < 10) { alert("Token Missing!"); return; }
-
-            if (retryCount === 0) {
-                btn.innerText = "SENDING"; btn.style.background = "yellow";
-                playSound('save');
-            } else {
-                btn.innerText = "RETRY " + retryCount; btn.style.background = "orange";
-            }
-
+            btn.innerText = "SENDING"; btn.style.background = "yellow";
+            playSound('save');
             try {
-                // 1. UPDATE THE DATABASE BLOCK IN MEMORY
-                const dbElement = document.getElementById('database');
-                const newData = JSON.stringify({ images: savedImages, state
+                let html = document.documentElement.outerHTML;
+                const imgStr = JSON.stringify(savedImages);
+                const stateStr = JSON.stringify(savedState);
+                
+                let updatedHTML = html
+                    .replace(/let savedState = \[.*?\];/, `let savedState = ${stateStr};`)
+                    .replace(/let savedImages = \[.*?\];/, `let savedImages = ${imgStr};`);
+
+                const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+                const getFile = await fetch(apiUrl);
+                const fileData = await getFile.json();
+
+                const res = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `token ${TOKEN}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'Smart Grid Sync',
+                        content: btoa(unescape(encodeURIComponent("<!DOCTYPE html>\n" + updatedHTML))),
+                        sha: fileData.sha
+                    })
+                });
+
+                if (res.ok) {
+                    btn.innerText = "DONE"; btn.style.background = "#00FF00";
+                    setTimeout(() => { alert("Saved! Page will update in ~1 minute."); btn.innerText = "SAVE"; }, 1000);
+                } else { throw new Error((await res.json()).message); }
+            } catch (e) { alert("Error: " + e.message); btn.innerText = "FAIL"; btn.style.background = "red"; }
+        }
+    </script>
+</body>
+</html>
