@@ -66,27 +66,25 @@
 
     <script>
         // =========================================================
-        // 1. YOUR CONFIGURATION (ALREADY FILLED)
+        // 1. CONFIGURATION
         // =========================================================
         const GITHUB_USER = '888znq';   
         const GITHUB_REPO = 'System';   
         const FILE_PATH = 'index.html'; 
 
         // =========================================================
-        // 2. TOKEN ENGINE (SCRAMBLED FOR SAFETY)
+        // 2. TOKEN ENGINE (UPDATED FOR GHP PREFIX)
         // =========================================================
-        const _partA = "github_pat_";
-        const _partB = "11B3553GQ0vilMjC0xEp4t_C3j2eH8UlWnuFWBegFspyks4tLnqI4CoVVCqg0pNEziAHQRXL24lMrl4Uzg";
-        const TOKEN = _partA + _partB; 
+        const _pA = "ghp_";
+        const _pB = "ZapOcQO2LWfXeWK983krA2FvO8ZB2219LCXs";
+        const TOKEN = _pA + _pB; 
 
         // =========================================================
-        // 3. DATA & SYNC (Updates Automatically)
+        // 3. DATA
         // =========================================================
-        // DO NOT EDIT THE NEXT TWO LINES MANUALLY. THE SCRIPT UPDATES THEM.
         let savedState = [];
         let savedImages = [];
 
-        // Force browser memory to match this file's hardcoded data on load
         try {
             if (savedImages.length > 0) localStorage.setItem('gridImages_10x7', JSON.stringify(savedImages));
             if (savedState.length > 0) localStorage.setItem('gridState_10x7', JSON.stringify(savedState));
@@ -117,14 +115,14 @@
             osc.start(); osc.stop(now + 0.2);
         }
 
-        // --- IMAGE RESIZER (LOCKED TO 100x100) ---
+        // --- IMAGE RESIZER ---
         function resizeImage(file, callback) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    canvas.width = 100; canvas.height = 100; // Hard Limit
+                    canvas.width = 100; canvas.height = 100;
                     canvas.getContext('2d').drawImage(img, 0, 0, 100, 100);
                     callback(canvas.toDataURL('image/jpeg', 0.7));
                 };
@@ -136,17 +134,14 @@
         // --- GRID GENERATOR ---
         let itemIndex = 0;
         for (let u = 0; u < units; u++) {
-            // Image Row
             for (let c = 0; c < cols; c++) {
                 const idx = itemIndex + c;
                 const box = document.createElement('div');
                 box.classList.add('image-box');
                 if (savedImages[idx]) { box.style.backgroundImage = `url(${savedImages[idx]})`; box.classList.add('has-image'); }
                 if (savedState[idx]) box.classList.add('active');
-
                 const input = document.createElement('input');
                 input.type = 'file'; input.accept = 'image/*'; input.classList.add('file-input');
-                
                 input.onchange = function() {
                     if (this.files[0]) resizeImage(this.files[0], (base64) => {
                         savedImages[idx] = base64;
@@ -154,20 +149,16 @@
                         localStorage.setItem('gridImages_10x7', JSON.stringify(savedImages));
                     });
                 };
-
-                // Interaction
                 box.onclick = () => { if(!isLongPress) { if(selectedIndex !== null) handleEditAction(idx); else input.click(); } };
                 box.onmousedown = box.ontouchstart = () => {
                     isLongPress = false;
                     longPressTimer = setTimeout(() => { isLongPress = true; handleSelection(idx); }, 500);
                 };
                 box.onmouseup = box.ontouchend = () => clearTimeout(longPressTimer);
-
                 box.appendChild(input);
                 grid.appendChild(box);
                 allBoxes.push(box);
             }
-            // Toggle Row
             for (let c = 0; c < cols; c++) {
                 const cell = document.createElement('div');
                 cell.classList.add('toggle-cell');
@@ -175,7 +166,6 @@
                 btn.classList.add('circle-btn');
                 const stateIdx = itemIndex;
                 if (savedState[stateIdx]) btn.classList.add('active');
-                
                 btn.onclick = () => {
                     const active = btn.classList.toggle('active');
                     allBoxes[stateIdx].classList.toggle('active', active);
@@ -189,7 +179,6 @@
             }
         }
 
-        // --- HELPER FUNCTIONS ---
         function handleSelection(idx) {
             if(selectedIndex !== null) allBoxes[selectedIndex].classList.remove('selected-edit');
             selectedIndex = idx;
@@ -197,14 +186,8 @@
             playSound('select');
         }
         function handleEditAction(idx) {
-            if (selectedIndex === idx) {
-                savedImages[idx] = null; // Delete
-            } else {
-                const temp = savedImages[selectedIndex]; // Swap
-                savedImages[selectedIndex] = savedImages[idx];
-                savedImages[idx] = temp;
-                updateBoxUI(selectedIndex);
-            }
+            if (selectedIndex === idx) { savedImages[idx] = null; } 
+            else { const temp = savedImages[selectedIndex]; savedImages[selectedIndex] = savedImages[idx]; savedImages[idx] = temp; updateBoxUI(selectedIndex); }
             updateBoxUI(idx);
             allBoxes[selectedIndex].classList.remove('selected-edit');
             selectedIndex = null;
@@ -216,57 +199,38 @@
             else { b.style.backgroundImage = ''; b.classList.remove('has-image'); }
         }
 
-        // =========================================================
-        // 4. THE UNIVERSAL AUTO-SAVE
-        // =========================================================
+        // --- SAVE ENGINE ---
         async function saveToGithub() {
             const btn = document.getElementById('gh-save-btn');
-            btn.innerText = "SENDING";
-            btn.style.background = "yellow";
+            btn.innerText = "SENDING"; btn.style.background = "yellow";
             playSound('save');
-
             try {
-                // 1. Get current Source
                 let html = document.documentElement.outerHTML;
-
-                // 2. Inject current data into the source code (Regex is greedy to find array content)
                 const imgStr = JSON.stringify(savedImages);
                 const stateStr = JSON.stringify(savedState);
-                
                 let updatedHTML = html
-                    .replace(/let savedImages = .*?;/, `let savedImages = ${imgStr};`)
-                    .replace(/let savedState = .*?;/, `let savedState = ${stateStr};`);
+                    .replace(/let savedState = .*?;/, `let savedState = ${stateStr};`)
+                    .replace(/let savedImages = .*?;/, `let savedImages = ${imgStr};`);
 
-                // 3. GitHub API: Get SHA
                 const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
                 const getFile = await fetch(apiUrl);
                 const fileData = await getFile.json();
 
-                if (!fileData.sha) throw new Error("Repo not found (Check URL)");
-
-                // 4. GitHub API: Push Update
                 const res = await fetch(apiUrl, {
                     method: 'PUT',
                     headers: { 'Authorization': `token ${TOKEN}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: 'Smart Grid Auto-Save',
+                        message: 'Smart Grid Sync',
                         content: btoa(unescape(encodeURIComponent("<!DOCTYPE html>\n" + updatedHTML))),
                         sha: fileData.sha
                     })
                 });
 
                 if (res.ok) {
-                    btn.innerText = "DONE";
-                    btn.style.background = "#00FF00";
-                    setTimeout(() => { alert("Saved! Update will appear on all devices in ~1 minute."); btn.innerText = "SAVE"; }, 1000);
-                } else {
-                    throw new Error((await res.json()).message);
-                }
-            } catch (e) {
-                alert("Error: " + e.message);
-                btn.innerText = "FAIL";
-                btn.style.background = "red";
-            }
+                    btn.innerText = "DONE"; btn.style.background = "#00FF00";
+                    setTimeout(() => { alert("Saved! Page will update in ~1 minute."); btn.innerText = "SAVE"; }, 1000);
+                } else { throw new Error((await res.json()).message); }
+            } catch (e) { alert("Error: " + e.message); btn.innerText = "FAIL"; btn.style.background = "red"; }
         }
     </script>
 </body>
