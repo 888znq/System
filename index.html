@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>System 10x7</title>
+    <script>
+        // --- EMERGENCY ERROR CATCHER ---
+        // If the screen stays black, this will tell us why!
+        window.onerror = function(msg, url, line) {
+            alert("SYSTEM ERROR:\n" + msg + "\nLine: " + line);
+            document.body.innerHTML = '<h2 style="color:red; text-align:center; margin-top:50px;">APP CRASHED<br><small>'+msg+'</small></h2>';
+        };
+    </script>
     <style>
         /* 1. RESET & LOCK */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -67,14 +75,4 @@
 
     <script>
         // =========================================================
-        // 1. CONFIGURATION
-        // =========================================================
-        const GITHUB_USER = '888znq';   
-        const GITHUB_REPO = 'System';   
-        const FILE_PATH = 'index.html'; 
-
-        // =========================================================
-        // 2. TOKEN ENGINE (ARMORED & READY)
-        // =========================================================
-        // Your numbers are pre-filled here. GitHub cannot read this.
-        const ARMOR = [103,104,112,95,78,105,54,80,108,112,66,122,111,56,74,50,78,117,86,77,118,101,111,119,51,67,99,76,65,67,71,88,112,89,48,71,68
+        //
