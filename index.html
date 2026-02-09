@@ -19,7 +19,7 @@
             width: 100%; height: 100%; display: grid;
             grid-template-columns: repeat(10, 1fr);
             grid-template-rows: repeat(7, 3fr 2fr);
-            padding: 2vmin; gap: 1.5vmin;
+            padding: 1vmin 1vmin 8vmin 1vmin; gap: 0.3vmin;
         }
 
         .image-box {
@@ -30,7 +30,7 @@
         }
         .image-box::after {
             content: "+"; position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); color: #444; font-size: 24px; font-weight: bold; pointer-events: none;
+            transform: translate(-50%, -50%); color: #444; font-size: 37.8px; font-weight: bold; pointer-events: none;
         }
         .image-box.has-image::after { display: none; }
         .image-box.active { border-color: #00FF00; }
@@ -42,7 +42,7 @@
         .circle-btn.active { background-color: #00FF00; }
 
         .file-input { display: none; }
-        #status-log { position: fixed; top: 10px; left: 10px; color: #555; font-size: 10px; font-family: monospace; z-index: 999; pointer-events: none; }
+        #status-log { position: fixed; top: 10px; left: 10px; color: #555; font-size: 17.01px; font-family: monospace; z-index: 999; pointer-events: none; }
     </style>
 </head>
 <body>
