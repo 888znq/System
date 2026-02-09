@@ -3,58 +3,234 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>System 10x7</title>
+    <title>Text Grid 10x7</title>
 
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="System">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; background-color: #000; overflow: hidden; user-select: none; }
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            background-color: #000; 
+            overflow: hidden; 
+            user-select: none;
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
         
         .grid-container {
-            width: 100%; height: 100%; display: grid;
+            width: 100%; 
+            height: 100%; 
+            display: grid;
             grid-template-columns: repeat(10, 1fr);
             grid-template-rows: repeat(7, 3fr 2fr);
-            padding: 1vmin 1vmin 8vmin 1vmin; gap: 0.3vmin;
+            padding: 1vmin 1vmin 8vmin 1vmin; 
+            gap: 0.3vmin;
         }
 
-        .image-box {
-            position: relative; border: 2px solid #FF0000; background-color: #111;
-            border-radius: 4px; width: 100%; height: 100%; cursor: pointer;
-            overflow: hidden; background-size: cover; background-position: center;
-            background-repeat: no-repeat; transition: border-color 0.1s;
+        .status-box {
+            position: relative; 
+            border: 1.5px solid #FF0000; 
+            background-color: #000;
+            border-radius: 6px; 
+            width: 100%; 
+            height: 100%; 
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
         }
-        .image-box::after {
-            content: "+"; position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); color: #444; font-size: 37.8px; font-weight: bold; pointer-events: none;
+        
+        .status-box .text-content {
+            color: #FF0000;
+            font-size: 20.79px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            line-height: 1.4;
+            font-family: 'Lexend Deca', sans-serif;
+            text-align: center;
+            word-wrap: break-word;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .image-box.has-image::after { display: none; }
-        .image-box.active { border-color: #00FF00; }
-        .image-box.selected-edit { border-color: #FFFF00 !important; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 0, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 255, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 255, 0, 0); } }
+        
+        .status-box.active .text-content {
+            color: #00FF00;
+        }
+        
+        .status-box::after {
+            content: "+"; 
+            position: absolute; 
+            top: 50%; 
+            left: 50%;
+            transform: translate(-50%, -50%); 
+            color: #333; 
+            font-size: 37.8px; 
+            font-weight: 300; 
+            pointer-events: none;
+            opacity: 0.4;
+        }
+        
+        .status-box.has-text::after { display: none; }
+        .status-box.active { border-color: #00FF00; }
+        .status-box.selected-edit { 
+            border-color: #FFFF00 !important;
+        }
 
-        .toggle-cell { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
-        .circle-btn { height: 80%; aspect-ratio: 1 / 1; border-radius: 50%; background-color: #FF0000; border: 2px solid #000; cursor: pointer; }
-        .circle-btn.active { background-color: #00FF00; }
+        .toggle-cell { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            width: 100%; 
+            height: 100%; 
+        }
+        
+        .circle-btn { 
+            height: 75%; 
+            aspect-ratio: 1 / 1; 
+            border-radius: 50%; 
+            background-color: #FF0000; 
+            border: none; 
+            cursor: pointer;
+        }
+        
+        .circle-btn.active { 
+            background-color: #00FF00; 
+        }
 
-        .file-input { display: none; }
-        #status-log { position: fixed; top: 10px; left: 10px; color: #555; font-size: 17.01px; font-family: monospace; z-index: 999; pointer-events: none; }
+        #status-log { 
+            position: fixed; 
+            top: 12px; 
+            left: 12px; 
+            color: #555; 
+            font-size: 17.01px; 
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            font-family: 'Lexend Deca', monospace; 
+            z-index: 999; 
+            pointer-events: none; 
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal-content {
+            background-color: #000;
+            margin: 20% auto;
+            padding: 24px;
+            border: 1.5px solid #00FF00;
+            border-radius: 8px;
+            width: 85%;
+            max-width: 420px;
+        }
+        
+        .modal-content textarea {
+            width: 100%;
+            height: 110px;
+            background-color: #000;
+            color: #fff;
+            border: 1.5px solid #00FF00;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 24.57px;
+            font-weight: 400;
+            line-height: 1.5;
+            letter-spacing: 0.2px;
+            font-family: 'Lexend Deca', sans-serif;
+            resize: none;
+        }
+        
+        .modal-content textarea:focus {
+            outline: none;
+        }
+        
+        .modal-buttons {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .modal-buttons button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 24.57px;
+            font-weight: 600;
+            font-family: 'Lexend Deca', sans-serif;
+            letter-spacing: 0.3px;
+        }
+        
+        .btn-save {
+            background-color: #00FF00;
+            color: #000;
+        }
+        
+        .btn-cancel {
+            background-color: #FF0000;
+            color: #fff;
+        }
+        
+        .btn-delete {
+            background-color: #444;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
+
     <div id="status-log">Connecting...</div>
     <div class="grid-container" id="grid"></div>
+
+    <!-- Text Input Modal -->
+    <div id="textModal" class="modal">
+        <div class="modal-content">
+            <textarea id="textInput" placeholder="Enter text..."></textarea>
+            <div class="modal-buttons">
+                <button class="btn-delete" id="btnDelete">Delete</button>
+                <button class="btn-cancel" id="btnCancel">Cancel</button>
+                <button class="btn-save" id="btnSave">Save</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyAYHA8Qw3Qzbyg8MtjrSKcJusNi4VaA6V4",
+            apiKey: "AIzaSyAYHA8Qw3Qw3Qzbyg8MtjrSKcJusNi4VaA6V4",
             authDomain: "system-data-bf026.firebaseapp.com",
             databaseURL: "https://system-data-bf026-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "system-data-bf026",
@@ -65,18 +241,26 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const dbRef = ref(db, 'system_10x7_data'); 
+        const dbRef = ref(db, 'text_grid_10x7_data'); 
 
-        let savedImages = new Array(70).fill(null);
+        let savedTexts = new Array(70).fill(null);
         let savedState = new Array(70).fill(false);
         let allPairs = [];
         let selectedIndex = null;
-        let isLongPress = false; let longPressTimer;
+        let isLongPress = false; 
+        let longPressTimer;
+        let currentEditIndex = null;
+
+        const modal = document.getElementById('textModal');
+        const textInput = document.getElementById('textInput');
+        const btnSave = document.getElementById('btnSave');
+        const btnCancel = document.getElementById('btnCancel');
+        const btnDelete = document.getElementById('btnDelete');
 
         onValue(dbRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                if(data.images) savedImages = data.images;
+                if(data.images) savedTexts = data.images;
                 if(data.state) savedState = data.state;
                 refreshUI();
                 document.getElementById('status-log').innerText = "LIVE";
@@ -85,8 +269,44 @@
         });
 
         function saveToCloud() {
-            set(dbRef, { images: savedImages, state: savedState });
+            set(dbRef, { images: savedTexts, state: savedState });
         }
+
+        function showTextModal(idx) {
+            currentEditIndex = idx;
+            textInput.value = savedTexts[idx] || '';
+            modal.style.display = 'block';
+            textInput.focus();
+        }
+
+        function hideTextModal() {
+            modal.style.display = 'none';
+            currentEditIndex = null;
+        }
+
+        btnSave.onclick = () => {
+            if(currentEditIndex !== null) {
+                savedTexts[currentEditIndex] = textInput.value.trim() || null;
+                saveToCloud();
+                hideTextModal();
+            }
+        };
+
+        btnCancel.onclick = () => {
+            hideTextModal();
+        };
+
+        btnDelete.onclick = () => {
+            if(currentEditIndex !== null) {
+                savedTexts[currentEditIndex] = null;
+                saveToCloud();
+                hideTextModal();
+            }
+        };
+
+        modal.onclick = (e) => {
+            if(e.target === modal) hideTextModal();
+        };
 
         const grid = document.getElementById('grid');
         const cols = 10;
@@ -98,62 +318,56 @@
             for (let c = 0; c < cols; c++) {
                 const idx = itemIndex + c;
                 const box = document.createElement('div');
-                box.className = 'image-box';
-                const input = document.createElement('input');
-                input.type = 'file'; input.accept = 'image/*'; input.className = 'file-input';
+                box.className = 'status-box';
                 
-                input.onchange = (e) => {
-                    if(e.target.files[0]) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                            const img = new Image();
-                            img.onload = () => {
-                                const canvas = document.createElement('canvas');
-                                const ctx = canvas.getContext('2d');
-                                ctx.drawImage(img, 0, 0, 100, 100);
-                                savedImages[idx] = canvas.toDataURL('image/jpeg', 0.7);
-                                saveToCloud();
-                            };
-                            img.src = ev.target.result;
-                        };
-                        reader.readAsDataURL(e.target.files[0]);
-                    }
-                };
-                
+                const textContent = document.createElement('div');
+                textContent.className = 'text-content';
+                box.appendChild(textContent);
+
                 box.onmousedown = box.ontouchstart = () => {
                     isLongPress = false;
-                    longPressTimer = setTimeout(() => { isLongPress = true; selectedIndex=idx; refreshUI(); }, 500);
+                    longPressTimer = setTimeout(() => { isLongPress = true; handleSelection(idx); }, 500);
                 };
                 box.onmouseup = box.ontouchend = () => clearTimeout(longPressTimer);
 
                 box.onclick = () => {
                     if(!isLongPress) {
                         if(selectedIndex !== null) {
-                            if(selectedIndex === idx) { savedImages[idx] = null; }
+                            if(selectedIndex === idx) { 
+                                showTextModal(idx);
+                            }
                             else { 
-                                const t = savedImages[selectedIndex]; savedImages[selectedIndex] = savedImages[idx]; savedImages[idx] = t;
-                                const s = savedState[selectedIndex]; savedState[selectedIndex] = savedState[idx]; savedState[idx] = s;
+                                const t = savedTexts[selectedIndex]; 
+                                savedTexts[selectedIndex] = savedTexts[idx]; 
+                                savedTexts[idx] = t;
+                                const s = savedState[selectedIndex]; 
+                                savedState[selectedIndex] = savedState[idx]; 
+                                savedState[idx] = s;
                             }
                             selectedIndex = null;
                             saveToCloud();
                             refreshUI();
-                        } else { input.click(); }
+                        } else { 
+                            showTextModal(idx); 
+                        }
                     }
                 };
                 
-                box.appendChild(input);
                 grid.appendChild(box);
                 currentBoxes.push(box);
             }
+
             for (let c = 0; c < cols; c++) {
                 const cell = document.createElement('div');
                 cell.className = 'toggle-cell';
                 const btn = document.createElement('div');
                 btn.className = 'circle-btn';
-                const sIdx = itemIndex;
+                const sIdx = itemIndex; 
+                const linkedBox = currentBoxes[c];
+                
                 btn.onclick = () => { savedState[sIdx] = !savedState[sIdx]; saveToCloud(); };
                 
-                allPairs.push({ btn: btn, box: currentBoxes[c] });
+                allPairs.push({ btn: btn, box: linkedBox });
                 cell.appendChild(btn);
                 grid.appendChild(cell);
                 itemIndex++;
@@ -163,13 +377,35 @@
         function refreshUI() {
             for(let i=0; i<70; i++) {
                 const pair = allPairs[i];
-                if(savedImages[i]) { pair.box.style.backgroundImage = `url(${savedImages[i]})`; pair.box.classList.add('has-image'); }
-                else { pair.box.style.backgroundImage = ''; pair.box.classList.remove('has-image'); }
-                if(savedState[i]) { pair.box.classList.add('active'); pair.btn.classList.add('active'); }
-                else { pair.box.classList.remove('active'); pair.btn.classList.remove('active'); }
+                const textContent = pair.box.querySelector('.text-content');
+                
+                if(savedTexts[i]) { 
+                    textContent.textContent = savedTexts[i];
+                    pair.box.classList.add('has-text'); 
+                }
+                else { 
+                    textContent.textContent = '';
+                    pair.box.classList.remove('has-text'); 
+                }
+                
+                if(savedState[i]) { 
+                    pair.box.classList.add('active'); 
+                    pair.btn.classList.add('active'); 
+                }
+                else { 
+                    pair.box.classList.remove('active'); 
+                    pair.btn.classList.remove('active'); 
+                }
+                
                 if(selectedIndex === i) pair.box.classList.add('selected-edit');
                 else pair.box.classList.remove('selected-edit');
             }
+        }
+
+        function handleSelection(idx) {
+            selectedIndex = idx;
+            refreshUI();
+            setTimeout(() => { if(selectedIndex===idx) { selectedIndex=null; refreshUI(); } }, 5000);
         }
     </script>
 </body>
