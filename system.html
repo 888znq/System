@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System</title>
+    <meta name="theme-color" content="#000432">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: #000432; color: white; height: 100vh; width: 100vw;
+            overflow: hidden; border: 1px solid white; font-family: 'Lexend Deca', sans-serif;
+            display: flex; align-items: center; justify-content: center; position: relative;
+        }
+
+        .dynamic-grid { display: grid; gap: 3px; background-color: transparent; }
+
+        .grid-item {
+            background-color: #000432; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+            position: relative; cursor: pointer; overflow: hidden; border: 1px solid #ff0000; color: #ff0000;
+            font-weight: 700; text-align: center; font-size: clamp(7px, 1vw, 12px); outline: none;
+        }
+        .content-wrapper { pointer-events: none; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .content-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+
+        .grid-item.completed { color: #00ff00; border-color: #00ff00; }
+        .grid-item.completed::after { content: ''; position: absolute; inset: 0; border: 1px solid #00ff00; pointer-events: none; }
+        .grid-item.swap-source { border: 2px solid #ffff00 !important; box-shadow: 0 0 10px #ffff00; }
+
+        .ctrl-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid white; color: white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+            transition: 0.2s; font-size: 0.6rem; text-transform: uppercase; border-radius: 4px;
+        }
+        .ctrl-btn:hover { background: white; color: #000432; }
+        .lock-btn { position: absolute; top: 10px; left: 10px; padding: 5px 10px; z-index: 30; }
+        .lock-btn.locked { background: #ff0000; color: white; border-color: #ff0000; }
+        .lock-btn.unlocked { background: transparent; color: #00ff00; border-color: #00ff00; }
+
+        .bottom-controls-wrapper { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 25; }
+        .controls-col { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 5px; z-index: 10; }
+        .btn-wide { width: 38px; height: 26px; }
+        .btn-tall { width: 26px; height: 38px; }
+
+        .action-overlay { display: none; }
+        .grid-unlocked .grid-item .action-overlay { display: block; }
+        .cell-btn {
+            position: absolute; background: rgba(0, 4, 50, 0.85); border: 1px solid #00ffff;
+            border-radius: 3px; width: 20px; height: 20px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; font-size: 10px; color: white;
+            opacity: 0.5; transition: 0.2s; z-index: 5;
+        }
+        .grid-unlocked .grid-item:hover .cell-btn { opacity: 1; transform: scale(1.1); }
+        .btn-swap { top: 2px; left: 2px; }
+        .btn-clear { top: 2px; right: 2px; border-color: #ff0000; }
+        .btn-text { bottom: 2px; left: 2px; }
+        .btn-upload { bottom: 2px; right: 2px; }
+
+        .uploading-overlay {
+            position: absolute; inset: 0; background: rgba(0, 4, 50, 0.8);
+            display: flex; align-items: center; justify-content: center;
+            color: #00ffff; font-size: 0.7rem; font-weight: bold; z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <button class="ctrl-btn lock-btn unlocked" id="lock-system" onclick="toggleLock()">Unlock</button>
+    <div id="grid-system" class="dynamic-grid"></div>
+    <div class="bottom-controls-wrapper" id="size-ctrls-bottom" style="display:flex; gap:5px;">
+        <button class="ctrl-btn btn-wide" onclick="changeSize('rows', 1)">+</button>
+        <button class="ctrl-btn btn-wide" onclick="changeSize('rows', -1)">-</button>
+    </div>
+    <div class="controls-col" id="size-ctrls-col">
+        <button class="ctrl-btn btn-tall" onclick="changeSize('cols', 1)">+</button>
+        <button class="ctrl-btn btn-tall" onclick="changeSize('cols', -1)">-</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const IMGBB_API_KEY = "c6cb2a9badd0a53af93636523c72211e";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAYHA8Qw3Qw3Qzbyg8MtjrSKcJusNi4VaA6V4",
+            authDomain: "system-data-bf026.firebaseapp.com",
+            databaseURL: "https://system-data-bf026-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "system-data-bf026",
+            storageBucket: "system-data-bf026.firebasestorage.app",
+            messagingSenderId: "718302899022",
+            appId: "1:718302899022:web:f1675dbcc293e138c68c1f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let lockedState = false;
+        let swapSource = null;
+        let targetCellForUpload = null;
+
+        const uploaderInput = document.createElement('input');
+        uploaderInput.type = 'file';
+        uploaderInput.accept = 'image/*';
+        uploaderInput.style.display = 'none';
+        document.body.appendChild(uploaderInput);
+
+        uploaderInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file || !targetCellForUpload) return;
+            const { cellRef, cellEl } = targetCellForUpload;
+            try {
+                const overlay = document.createElement('div');
+                overlay.className = 'uploading-overlay';
+                overlay.innerText = 'SYNC...';
+                cellEl.appendChild(overlay);
+                const formData = new FormData();
+                formData.append("image", file);
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) { update(cellRef, { text: data.data.url }); }
+                else { throw new Error("ImgBB upload failed"); }
+            } catch (error) {
+                console.error("Upload failed:", error);
+                alert("Upload failed.");
+            } finally {
+                targetCellForUpload = null;
+                uploaderInput.value = '';
+                const overlay = cellEl.querySelector('.uploading-overlay');
+                if (overlay) overlay.remove();
+            }
+        });
+
+        window.toggleLock = () => set(ref(db, `grids/system/config/locked`), !lockedState);
+
+        window.changeSize = (type, delta) => {
+            if (lockedState) return;
+            const configRef = ref(db, `grids/system/config`);
+            onValue(configRef, (snap) => {
+                let current = snap.val()?.[type] || 5;
+                update(configRef, { [type]: Math.max(1, current + delta) });
+            }, { onlyOnce: true });
+        };
+
+        function renderContent(el, text) {
+            const cleanText = text?.trim() || "";
+            const isImage = /\.(jpg|jpeg|png|webp|gif|svg|avif)($|\?)/i.test(cleanText) || cleanText.includes("ibb.co") || cleanText.startsWith("data:image/") || cleanText.includes("gstatic.com/images") || cleanText.includes("googleusercontent.com");
+            if (isImage) { el.innerHTML = `<img src="${cleanText}" crossorigin="anonymous">`; }
+            else { el.innerText = cleanText; }
+        }
+
+        function createCell(id, container) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-item';
+            container.appendChild(cell);
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content-wrapper';
+            cell.appendChild(contentDiv);
+
+            const actionOverlay = document.createElement('div');
+            actionOverlay.className = 'action-overlay';
+            const btnSwap = document.createElement('button'); btnSwap.className='cell-btn btn-swap'; btnSwap.innerHTML='🔄';
+            const btnClear = document.createElement('button'); btnClear.className='cell-btn btn-clear'; btnClear.innerHTML='❌';
+            const btnText = document.createElement('button'); btnText.className='cell-btn btn-text'; btnText.innerHTML='📝';
+            const btnUpload = document.createElement('button'); btnUpload.className='cell-btn btn-upload'; btnUpload.innerHTML='📷';
+            actionOverlay.appendChild(btnSwap); actionOverlay.appendChild(btnClear); actionOverlay.appendChild(btnText); actionOverlay.appendChild(btnUpload);
+            cell.appendChild(actionOverlay);
+
+            const cellRef = ref(db, `grids/system/data/${id}`);
+            onValue(cellRef, (snap) => {
+                const val = snap.val() || { text: "", completed: false };
+                renderContent(contentDiv, val.text);
+                val.completed ? cell.classList.add('completed') : cell.classList.remove('completed');
+            });
+
+            btnUpload.addEventListener('click', (e) => { e.stopPropagation(); if (lockedState) return; targetCellForUpload = { cellRef, cellEl: cell }; uploaderInput.click(); });
+            btnText.addEventListener('click', (e) => { e.stopPropagation(); if (lockedState) return; let cur = contentDiv.innerText || contentDiv.querySelector('img')?.src || ""; let nw = prompt("Enter text or image URL:", cur); if (nw !== null) update(cellRef, { text: nw }); });
+            btnSwap.addEventListener('click', (e) => {
+                e.stopPropagation(); if (lockedState) return;
+                if (!swapSource) { swapSource = { id, element: cell }; cell.classList.add('swap-source'); }
+                else if (swapSource.id === id) { swapSource.element.classList.remove('swap-source'); swapSource = null; }
+                else {
+                    const sRef = ref(db, `grids/system/data/${swapSource.id}`);
+                    const tRef = ref(db, `grids/system/data/${id}`);
+                    onValue(sRef, (s1) => { onValue(tRef, (s2) => { update(sRef, s2.val()); update(tRef, s1.val()); }, { onlyOnce: true }); }, { onlyOnce: true });
+                    swapSource.element.classList.remove('swap-source'); swapSource = null;
+                }
+            });
+            btnClear.addEventListener('click', (e) => { e.stopPropagation(); if (lockedState) return; update(cellRef, { text: "", completed: false }); });
+            cell.addEventListener('click', () => { update(cellRef, { completed: !cell.classList.contains('completed') }); });
+        }
+
+        function initApp() {
+            const container = document.getElementById('grid-system');
+            const lockBtn = document.getElementById('lock-system');
+            const ctrlBottom = document.getElementById('size-ctrls-bottom');
+            const ctrlCol = document.getElementById('size-ctrls-col');
+
+            onValue(ref(db, `grids/system/config`), (snap) => {
+                const config = snap.val() || { rows: 5, cols: 5, locked: false };
+                lockedState = config.locked;
+                lockBtn.innerText = config.locked ? "Locked" : "Unlock";
+                lockBtn.className = `ctrl-btn lock-btn ${config.locked ? 'locked' : 'unlocked'}`;
+                ctrlBottom.style.display = config.locked ? 'none' : 'flex';
+                ctrlCol.style.display = config.locked ? 'none' : 'flex';
+
+                if (lockedState) container.classList.remove('grid-unlocked');
+                else container.classList.add('grid-unlocked');
+
+                const mainDisplayHeight = window.innerHeight;
+                const mainDisplayWidth = window.innerWidth;
+                const gap = 3;
+                const maxCellW = (mainDisplayWidth - (config.cols - 1) * gap) / config.cols;
+                const maxCellH = (mainDisplayHeight - (config.rows - 1) * gap) / config.rows;
+                const cellSize = Math.floor(Math.min(maxCellW, maxCellH));
+
+                container.style.width = `${(cellSize * config.cols) + ((config.cols - 1) * gap)}px`;
+                container.style.height = `${(cellSize * config.rows) + ((config.rows - 1) * gap)}px`;
+                container.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
+                container.style.gridTemplateRows = `repeat(${config.rows}, 1fr)`;
+
+                container.innerHTML = '';
+                for (let i = 0; i < config.rows * config.cols; i++) {
+                    createCell(`${Math.floor(i / config.cols)}_${i % config.cols}`, container);
+                }
+            });
+        }
+
+        initApp();
+        window.addEventListener('resize', initApp);
+    </script>
+</body>
+</html>
