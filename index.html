@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System</title>
+    <title>System 1</title>
     <meta name="theme-color" content="#000432">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -97,6 +97,11 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // ==========================================
+        // UNIQUE ID: INSTANCE 1
+        // ==========================================
+        const GRID_ID = "grid_1";
+
         let lockedState = false;
         let swapSource = null;
         let targetCellForUpload = null;
@@ -133,11 +138,11 @@
             }
         });
 
-        window.toggleLock = () => set(ref(db, `grids/system/config/locked`), !lockedState);
+        window.toggleLock = () => set(ref(db, `grids/${GRID_ID}/config/locked`), !lockedState);
 
         window.changeSize = (type, delta) => {
             if (lockedState) return;
-            const configRef = ref(db, `grids/system/config`);
+            const configRef = ref(db, `grids/${GRID_ID}/config`);
             onValue(configRef, (snap) => {
                 let current = snap.val()?.[type] || 5;
                 update(configRef, { [type]: Math.max(1, current + delta) });
@@ -169,7 +174,7 @@
             actionOverlay.appendChild(btnSwap); actionOverlay.appendChild(btnClear); actionOverlay.appendChild(btnText); actionOverlay.appendChild(btnUpload);
             cell.appendChild(actionOverlay);
 
-            const cellRef = ref(db, `grids/system/data/${id}`);
+            const cellRef = ref(db, `grids/${GRID_ID}/data/${id}`);
             onValue(cellRef, (snap) => {
                 const val = snap.val() || { text: "", completed: false };
                 renderContent(contentDiv, val.text);
@@ -183,8 +188,8 @@
                 if (!swapSource) { swapSource = { id, element: cell }; cell.classList.add('swap-source'); }
                 else if (swapSource.id === id) { swapSource.element.classList.remove('swap-source'); swapSource = null; }
                 else {
-                    const sRef = ref(db, `grids/system/data/${swapSource.id}`);
-                    const tRef = ref(db, `grids/system/data/${id}`);
+                    const sRef = ref(db, `grids/${GRID_ID}/data/${swapSource.id}`);
+                    const tRef = ref(db, `grids/${GRID_ID}/data/${id}`);
                     onValue(sRef, (s1) => { onValue(tRef, (s2) => { update(sRef, s2.val()); update(tRef, s1.val()); }, { onlyOnce: true }); }, { onlyOnce: true });
                     swapSource.element.classList.remove('swap-source'); swapSource = null;
                 }
@@ -199,7 +204,7 @@
             const ctrlBottom = document.getElementById('size-ctrls-bottom');
             const ctrlCol = document.getElementById('size-ctrls-col');
 
-            onValue(ref(db, `grids/system/config`), (snap) => {
+            onValue(ref(db, `grids/${GRID_ID}/config`), (snap) => {
                 const config = snap.val() || { rows: 5, cols: 5, locked: false };
                 lockedState = config.locked;
                 lockBtn.innerText = config.locked ? "Locked" : "Unlock";
