@@ -11,23 +11,25 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background-color: #000432; color: white; height: 100vh; width: 100vw;
-            overflow: hidden; border: 1px solid white; font-family: 'Lexend Deca', sans-serif;
-            display: flex; align-items: center; justify-content: center; position: relative;
-        }
-
-        .dynamic-grid { display: grid; gap: 3px; background-color: transparent; }
-
-        .grid-item {
-            background-color: #000432; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
-            position: relative; cursor: pointer; overflow: hidden; border: 1px solid #ff0000; color: #ff0000;
-            font-weight: 700; text-align: center; font-size: clamp(7px, 1vw, 12px); outline: none;
-        }
-        .content-wrapper { pointer-events: none; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-        .content-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-
-        .grid-item.completed { color: #00ff00; border-color: #00ff00; }
-        .grid-item.completed::after { content: ''; position: absolute; inset: 0; border: 1px solid #00ff00; pointer-events: none; }
+                    background-color: #000432; color: white; height: 100vh; width: 100vw;
+                    overflow: hidden; border: 1px solid white; font-family: 'Lexend Deca', sans-serif;
+                    display: flex; align-items: center; justify-content: center; position: relative;
+                    user-select: none; -webkit-user-select: none;
+                }
+        
+                .dynamic-grid { display: grid; gap: 5px; background-color: transparent; }
+        
+                .grid-item {
+                            background-color: #000432; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+                            position: relative; cursor: pointer; overflow: hidden; border: 2px solid #ff0000; color: #ff0000;
+                            font-weight: 700; text-align: center; font-size: clamp(7px, 1vw, 12px); outline: none; padding: 0;
+                            user-select: none; -webkit-user-select: none; border-radius: 12px;
+                        }
+                        .content-wrapper { pointer-events: none; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+                        .content-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+        
+                .grid-item.completed { color: #00ff00; border-color: #00ff00; }
+                .grid-item.completed::after { display: none; }
         .grid-item.swap-source { border: 2px solid #ffff00 !important; box-shadow: 0 0 10px #ffff00; }
 
         .ctrl-btn {
@@ -67,12 +69,17 @@
     </style>
 </head>
 <body>
-    <button class="ctrl-btn lock-btn unlocked" id="lock-system" onclick="toggleLock()">Unlock</button>
-    <div id="grid-system" class="dynamic-grid"></div>
-    <div class="bottom-controls-wrapper" id="size-ctrls-bottom" style="display:flex; gap:5px;">
-        <button class="ctrl-btn btn-wide" onclick="changeSize('rows', 1)">+</button>
-        <button class="ctrl-btn btn-wide" onclick="changeSize('rows', -1)">-</button>
-    </div>
+        <button class="ctrl-btn lock-btn unlocked" id="lock-system" onclick="toggleLock()">Unlock</button>
+        <div id="grid-system" class="dynamic-grid"></div>
+        <button id="reset-bottom-btn" onclick="resetBottomRows()" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 30; background: transparent; border: none; color: #ff0000; cursor: pointer; display: none; padding: 0; outline: none; align-items: center; justify-content: center;">
+            <svg width="60" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-5.096 0-5.096 8 0 8 5.606 0 7.644-8 12.739-8z"></path>
+            </svg>
+        </button>
+        <div class="bottom-controls-wrapper" id="size-ctrls-bottom" style="display:flex; gap:5px;">
+        <button class="ctrl-btn btn-wide" onclick="changeSize('rows', 1)">+</button>
+        <button class="ctrl-btn btn-wide" onclick="changeSize('rows', -1)">-</button>
+    </div>
     <div class="controls-col" id="size-ctrls-col">
         <button class="ctrl-btn btn-tall" onclick="changeSize('cols', 1)">+</button>
         <button class="ctrl-btn btn-tall" onclick="changeSize('cols', -1)">-</button>
@@ -141,20 +148,38 @@
         window.toggleLock = () => set(ref(db, `grids/${GRID_ID}/config/locked`), !lockedState);
 
         window.changeSize = (type, delta) => {
-            if (lockedState) return;
-            const configRef = ref(db, `grids/${GRID_ID}/config`);
-            onValue(configRef, (snap) => {
-                let current = snap.val()?.[type] || 5;
-                update(configRef, { [type]: Math.max(1, current + delta) });
-            }, { onlyOnce: true });
-        };
+                    if (lockedState) return;
+                    const configRef = ref(db, `grids/${GRID_ID}/config`);
+                    onValue(configRef, (snap) => {
+                        let current = snap.val()?.[type] || 5;
+                        update(configRef, { [type]: Math.max(1, current + delta) });
+                    }, { onlyOnce: true });
+                };
+        
+                window.resetBottomRows = () => {
+                            const configRef = ref(db, `grids/${GRID_ID}/config`);
+                            onValue(configRef, (snap) => {
+                                const config = snap.val();
+                                if (!config) return;
+                                const rows = config.rows || 5;
+                                const cols = config.cols || 5;
+                                
+                                const startRow = Math.max(0, rows - 2);
+                                
+                                for (let r = startRow; r < rows; r++) {
+                                    for (let c = 0; c < cols; c++) {
+                                        update(ref(db, `grids/${GRID_ID}/data/${r}_${c}`), { completed: false });
+                                    }
+                                }
+                            }, { onlyOnce: true });
+                        };
 
         function renderContent(el, text) {
-            const cleanText = text?.trim() || "";
-            const isImage = /\.(jpg|jpeg|png|webp|gif|svg|avif)($|\?)/i.test(cleanText) || cleanText.includes("ibb.co") || cleanText.startsWith("data:image/") || cleanText.includes("gstatic.com/images") || cleanText.includes("googleusercontent.com");
-            if (isImage) { el.innerHTML = `<img src="${cleanText}" crossorigin="anonymous">`; }
-            else { el.innerText = cleanText; }
-        }
+                    const cleanText = text?.trim() || "";
+                    const isImage = /\.(jpg|jpeg|png|webp|gif|svg|avif)($|\?)/i.test(cleanText) || cleanText.includes("ibb.co") || cleanText.startsWith("data:image/") || cleanText.includes("gstatic.com/images") || cleanText.includes("googleusercontent.com");
+                    if (isImage) { el.innerHTML = `<img src="${cleanText}" crossorigin="anonymous" draggable="false">`; }
+                    else { el.innerText = cleanText; }
+                }
 
         function createCell(id, container) {
             const cell = document.createElement('div');
@@ -201,24 +226,26 @@
         function initApp() {
             const container = document.getElementById('grid-system');
             const lockBtn = document.getElementById('lock-system');
-            const ctrlBottom = document.getElementById('size-ctrls-bottom');
-            const ctrlCol = document.getElementById('size-ctrls-col');
-
-            onValue(ref(db, `grids/${GRID_ID}/config`), (snap) => {
-                const config = snap.val() || { rows: 5, cols: 5, locked: false };
-                lockedState = config.locked;
-                lockBtn.innerText = config.locked ? "Locked" : "Unlock";
-                lockBtn.className = `ctrl-btn lock-btn ${config.locked ? 'locked' : 'unlocked'}`;
-                ctrlBottom.style.display = config.locked ? 'none' : 'flex';
-                ctrlCol.style.display = config.locked ? 'none' : 'flex';
-
-                if (lockedState) container.classList.remove('grid-unlocked');
+                        const ctrlBottom = document.getElementById('size-ctrls-bottom');
+                        const ctrlCol = document.getElementById('size-ctrls-col');
+                        const resetBtn = document.getElementById('reset-bottom-btn');
+            
+                        onValue(ref(db, `grids/${GRID_ID}/config`), (snap) => {
+                            const config = snap.val() || { rows: 5, cols: 5, locked: false };
+                            lockedState = config.locked;
+                            lockBtn.innerText = config.locked ? "Locked" : "Unlock";
+                            lockBtn.className = `ctrl-btn lock-btn ${config.locked ? 'locked' : 'unlocked'}`;
+                                                        ctrlBottom.style.display = config.locked ? 'none' : 'flex';
+                                                        ctrlCol.style.display = config.locked ? 'none' : 'flex';
+                                                        if (resetBtn) resetBtn.style.display = config.locked ? 'flex' : 'none';
+                                        
+                                                        if (lockedState) container.classList.remove('grid-unlocked');
                 else container.classList.add('grid-unlocked');
 
                 const mainDisplayHeight = window.innerHeight;
-                const mainDisplayWidth = window.innerWidth;
-                const gap = 3;
-                const maxCellW = (mainDisplayWidth - (config.cols - 1) * gap) / config.cols;
+                                const mainDisplayWidth = window.innerWidth;
+                                const gap = 5;
+                                const maxCellW = (mainDisplayWidth - (config.cols - 1) * gap) / config.cols;
                 const maxCellH = (mainDisplayHeight - (config.rows - 1) * gap) / config.rows;
                 const cellSize = Math.floor(Math.min(maxCellW, maxCellH));
 
